@@ -1,0 +1,53 @@
+# `docker compose up -d`            → Postgres only (for `npm run dev` on your machine)
+# `docker compose --profile app up -d --build` → Postgres + migrations + the app on http://localhost:3000
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: maxqr
+      POSTGRES_PASSWORD: maxqr
+      POSTGRES_DB: maxqr
+    ports:
+      - "5432:5432"
+    volumes:
+      - maxqr-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U maxqr -d maxqr"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    profiles: ["app"]
+    build:
+      context: .
+      target: migrate
+    environment:
+      DATABASE_URL: postgresql://maxqr:maxqr@postgres:5432/maxqr?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  app:
+    profiles: ["app"]
+    build:
+      context: .
+      target: runner
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://maxqr:maxqr@postgres:5432/maxqr?schema=public
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  maxqr-pg:

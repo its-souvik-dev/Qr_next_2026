@@ -1,0 +1,173 @@
+// Max QR — database schema
+// Sensitive values (passwords, session/reset tokens, link passwords) are only ever stored hashed.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum QRType {
+  URL
+  TEXT
+  EMAIL
+  PHONE
+  SMS
+  WIFI
+  WHATSAPP
+  LOCATION
+  VCARD
+  SOCIAL
+  APP
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  sessions       Session[]
+  resetTokens    PasswordResetToken[]
+  qrCodes        QRCode[]
+  shortLinks     ShortLink[]
+  templates      QRTemplate[]
+  customDomains  CustomDomain[]
+  settings       UserSettings?
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  /// SHA-256 of the opaque session token stored in the cookie
+  tokenHash  String   @unique
+  userId     String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  /// SHA-256 of the reset token sent to the user
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model QRCode {
+  id          String     @id @default(cuid())
+  userId      String
+  name        String
+  type        QRType
+  /// Validated form payload for the QR type (see src/features/qr/schemas)
+  payload     Json
+  /// The exact string encoded into the QR symbol (static — no redirect dependency)
+  content     String
+  /// Validated style configuration (see src/lib/qr/config.ts)
+  config      Json
+  shortLinkId String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shortLink   ShortLink? @relation(fields: [shortLinkId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([shortLinkId])
+}
+
+model ShortLink {
+  id             String        @id @default(cuid())
+  userId         String
+  slug           String        @unique
+  destinationUrl String
+  title          String?
+  isActive       Boolean       @default(true)
+  expiresAt      DateTime?
+  /// scrypt hash; null when the link is not password protected
+  passwordHash   String?
+  category       String?
+  tags           String[]      @default([])
+  domainId       String?
+  /// Denormalised counter for fast listing; source of truth is LinkClick
+  clickCount     Int           @default(0)
+  lastClickedAt  DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domain         CustomDomain? @relation(fields: [domainId], references: [id], onDelete: SetNull)
+  clicks         LinkClick[]
+  qrCodes        QRCode[]
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, category])
+  @@index([domainId])
+}
+
+model LinkClick {
+  id          String    @id @default(cuid())
+  linkId      String
+  createdAt   DateTime  @default(now())
+  /// ISO-3166 alpha-2 from the edge/CDN header, when available and enabled
+  country     String?
+  device      String    @default("desktop")
+  browser     String?
+  os          String?
+  /// Referrer hostname only (never full URL)
+  referrer    String?
+  /// Salted daily hash of ip+ua — used for privacy-conscious unique counts; raw IP is never stored
+  visitorHash String
+  link        ShortLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  @@index([linkId, createdAt])
+  @@index([createdAt])
+}
+
+model QRTemplate {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  config    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+}
+
+model CustomDomain {
+  id                String      @id @default(cuid())
+  userId            String
+  hostname          String      @unique
+  verificationToken String
+  verifiedAt        DateTime?
+  createdAt         DateTime    @default(now())
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  links             ShortLink[]
+
+  @@index([userId])
+}
+
+model UserSettings {
+  id                     String   @id @default(cuid())
+  userId                 String   @unique
+  analyticsRetentionDays Int      @default(365)
+  collectCountry         Boolean  @default(true)
+  collectReferrer        Boolean  @default(true)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
