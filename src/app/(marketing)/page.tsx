@@ -50,7 +50,8 @@ export default function HomePage() {
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               {/* sign-up disabled: <Button size="lg" asChild><Link href="/register">Start creating — free <ArrowRight /></Link></Button> */}
-              <Button size="lg" asChild><Link href="/login">Sign in <ArrowRight /></Link></Button>
+              <Button size="lg" asChild><Link href="/generate">Create a QR code — free <ArrowRight /></Link></Button>
+              <Button size="lg" variant="outline" asChild><Link href="/login">Sign in</Link></Button>
             </div>
             <p className="mt-6 text-sm text-muted-foreground">{QR_TYPES.map((t) => t.label).join(" · ")}</p>
           </div>
@@ -102,7 +103,7 @@ export default function HomePage() {
         <div className="mx-auto flex max-w-6xl flex-col items-center px-4 py-20 text-center sm:px-6">
           <h2 className="text-3xl font-semibold tracking-tight">Make your first code in under a minute</h2>
           <p className="mt-3 max-w-lg text-muted-foreground">Free to use. No watermark, no scan limits, no expiry on static codes.</p>
-          <Button size="lg" className="mt-8" asChild><Link href="/login">Sign in to get started <ArrowRight /></Link></Button>
+          <Button size="lg" className="mt-8" asChild><Link href="/generate">Create a QR code now <ArrowRight /></Link></Button>
         </div>
       </section>
     </>

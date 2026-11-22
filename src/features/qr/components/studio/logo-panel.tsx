@@ -32,6 +32,7 @@ function Toggle({ id, label, checked, onChange, hint }: { id: string; label: str
 export function LogoPanel() {
   const style = useQrStudio((s) => s.style);
   const setStyle = useQrStudio((s) => s.setStyle);
+  const local = useQrStudio((s) => s.publicMode);
   const logo = style.logo;
   const accent = primaryColor(style.dots.fill);
 
@@ -53,6 +54,7 @@ export function LogoPanel() {
         <Section title="Logo" description="Place your brand in the center. Error correction is raised automatically to keep the code scannable.">
           <ImageUpload
             kind="logo"
+            local={local}
             label="Upload your logo"
             onUploaded={(img) =>
               setStyle((s) => ({ ...s, logo: applyLogoStyle({ ...DEFAULT_LOGO, src: img.dataUrl }, "rounded", accent) }))
@@ -79,7 +81,7 @@ export function LogoPanel() {
             <img src={logo.src} alt="Uploaded logo" className="max-h-full max-w-full object-contain" />
           </div>
           <div className="flex-1">
-            <ImageUpload kind="logo" compact label="Replace logo" onUploaded={(img) => setLogo({ src: img.dataUrl })} />
+            <ImageUpload kind="logo" local={local} compact label="Replace logo" onUploaded={(img) => setLogo({ src: img.dataUrl })} />
           </div>
         </div>
       </Section>

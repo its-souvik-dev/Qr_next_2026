@@ -18,6 +18,7 @@ export function PresetsPanel({ templates }: { templates: SavedStyle[] }) {
   const style = useQrStudio((s) => s.style);
   const applyPreset = useQrStudio((s) => s.applyPreset);
   const loadTemplate = useQrStudio((s) => s.loadTemplate);
+  const publicMode = useQrStudio((s) => s.publicMode);
   const [name, setName] = useState("");
   const [pending, start] = useTransition();
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -67,6 +68,7 @@ export function PresetsPanel({ templates }: { templates: SavedStyle[] }) {
         </div>
       </Section>
 
+      {!publicMode && (
       <Section title="My styles" description="Save the current design (including logo) to reuse it on other codes.">
         <form
           className="flex gap-2"
@@ -106,6 +108,7 @@ export function PresetsPanel({ templates }: { templates: SavedStyle[] }) {
           </div>
         )}
       </Section>
+      )}
     </div>
   );
 }

@@ -24,6 +24,7 @@ export function PreviewPanel() {
   const type = useQrStudio((s) => s.type);
   const id = useQrStudio((s) => s.id);
   const dirty = useQrStudio((s) => s.dirty);
+  const publicMode = useQrStudio((s) => s.publicMode);
   const setName = useQrStudio((s) => s.setName);
   const touchAll = useQrStudio((s) => s.touchAll);
   const markSaved = useQrStudio((s) => s.markSaved);
@@ -41,7 +42,7 @@ export function PreviewPanel() {
     setDownloading(true);
     try {
       const size = exportPixelSize(settings);
-      const blob = await exportQr({ content: preview.encoded, config: style, format: settings.format, size, dpi: settings.dpi, transparent: settings.transparent, quality: settings.quality });
+      const blob = await exportQr({ content: preview.encoded, config: style, format: settings.format, size, dpi: settings.dpi, transparent: settings.transparent, quality: settings.quality }, { local: publicMode });
       downloadBlob(blob, `${slugifyFilename(name || qrTypeMeta(type).label)}-${size}.${EXTENSION[settings.format]}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Download failed");
@@ -123,6 +124,9 @@ export function PreviewPanel() {
           <Label htmlFor="qr-name" className="text-[13px]">Name</Label>
           <Input id="qr-name" placeholder={`${qrTypeMeta(type).label} QR`} value={name} maxLength={100} onChange={(e) => setName(e.target.value)} />
         </div>
+        {publicMode ? (
+          <p className="text-xs text-muted-foreground">Used for the file name. Your QR code is generated in your browser — nothing is uploaded or stored.</p>
+        ) : (
         <div className="flex gap-2">
           <Button className="flex-1" variant="secondary" onClick={() => save()} disabled={saving}>
             {saving ? <Loader2 className="animate-spin" /> : <Save />}
@@ -134,6 +138,7 @@ export function PreviewPanel() {
             </Button>
           )}
         </div>
+        )}
       </div>
 
       <div className="rounded-xl border bg-card p-4 text-sm shadow-sm">
@@ -158,7 +163,7 @@ export function PreviewPanel() {
       </div>
 
       {preview.status === "ready" && (
-        <ExportDialog open={dialogOpen} onOpenChange={setDialogOpen} content={preview.encoded} config={style} settings={settings} name={name} />
+        <ExportDialog open={dialogOpen} onOpenChange={setDialogOpen} content={preview.encoded} config={style} settings={settings} name={name} local={publicMode} />
       )}
     </div>
   );

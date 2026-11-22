@@ -31,6 +31,8 @@ export type QrStudioState = {
   contents: ContentMap;
   style: QRStyleConfig;
   shortLinkId: string | null;
+  /** Public (signed-out) mode: everything runs in the browser, nothing is saved or sent to the server. */
+  publicMode: boolean;
   exportSettings: ExportSettings;
   dirty: boolean;
   /** Fields the user has interacted with (validation errors only show for these). */
@@ -52,7 +54,7 @@ export type QrStudioActions = {
 
 export type QrStudioStore = QrStudioState & QrStudioActions;
 
-export type QrStudioInit = Partial<Pick<QrStudioState, "id" | "name" | "type" | "style" | "shortLinkId">> & {
+export type QrStudioInit = Partial<Pick<QrStudioState, "id" | "name" | "type" | "style" | "shortLinkId" | "publicMode">> & {
   content?: QrContentInput;
 };
 
@@ -84,6 +86,7 @@ function createQrStudioStore(init: QrStudioInit) {
     contents,
     style: init.style ?? DEFAULT_QR_STYLE,
     shortLinkId: init.shortLinkId ?? null,
+    publicMode: init.publicMode ?? false,
     exportSettings: { ...DEFAULT_EXPORT, sizePx: init.style?.size ?? DEFAULT_EXPORT.sizePx },
     dirty: false,
     touched: {},

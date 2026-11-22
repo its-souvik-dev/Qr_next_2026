@@ -13,6 +13,7 @@ import { Section } from "./section";
 export function ColorsPanel() {
   const style = useQrStudio((s) => s.style);
   const setStyle = useQrStudio((s) => s.setStyle);
+  const local = useQrStudio((s) => s.publicMode);
 
   return (
     <div className="grid gap-6">
@@ -83,6 +84,7 @@ export function ColorsPanel() {
         ) : null}
         <ImageUpload
           kind="background"
+          local={local}
           compact={!!style.background.image}
           label={style.background.image ? "Replace image" : "Upload background image"}
           onUploaded={(img) => setStyle((s) => ({ ...s, background: { ...s.background, image: { src: img.dataUrl, opacity: s.background.image?.opacity ?? 0.25 } } }))}

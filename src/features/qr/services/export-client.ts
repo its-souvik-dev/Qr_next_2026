@@ -15,14 +15,22 @@ export type ExportRequest = {
 
 export const EXTENSION = { png: "png", jpeg: "jpg", webp: "webp", svg: "svg" } as const;
 
+const RASTER_MIME = { png: "image/png", jpeg: "image/jpeg", webp: "image/webp" } as const;
+
 /**
  * Produce the final export file. SVG is generated locally; raster formats are rendered by the
  * server with Sharp so large print sizes are crisp and carry DPI metadata.
+ * With `local`, raster formats are drawn on a canvas instead — no request leaves the browser
+ * (used by the public generator, where there's no signed-in user).
  */
-export async function exportQr(req: ExportRequest): Promise<Blob> {
+export async function exportQr(req: ExportRequest, opts: { local?: boolean } = {}): Promise<Blob> {
   if (req.format === "svg") {
     const { svg } = renderQrSvg(req.content, req.config, { size: req.size, transparent: req.transparent });
     return new Blob([`<?xml version="1.0" encoding="UTF-8"?>\n${svg}`], { type: "image/svg+xml" });
+  }
+  if (opts.local) {
+    const { svg } = renderQrSvg(req.content, req.config, { size: req.size, transparent: req.transparent });
+    return rasterizeInBrowser(svg, req.size, RASTER_MIME[req.format], req.quality / 100);
   }
   const res = await fetch("/api/qr/render", {
     method: "POST",

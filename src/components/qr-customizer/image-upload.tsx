@@ -9,17 +9,55 @@ const ACCEPT = "image/png,image/jpeg,image/webp,image/svg+xml";
 
 export type UploadedImage = { dataUrl: string; width: number; height: number; bytes: number };
 
-/** Drag-and-drop uploader. Files are sanitized and re-encoded by /api/uploads. */
+const MAX_DIMENSION = { logo: 768, background: 1600 } as const;
+
+/**
+ * Sanitize an image entirely in the browser: decode it, downscale and re-encode as PNG.
+ * Redrawing through a canvas drops metadata and any SVG scripts. Nothing is uploaded.
+ */
+async function processLocally(file: File, max: number): Promise<UploadedImage> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    try {
+      await img.decode();
+    } catch {
+      throw new Error("Unsupported or corrupted image. Use PNG, JPG, SVG or WebP.");
+    }
+    const w0 = img.naturalWidth || max;
+    const h0 = img.naturalHeight || max;
+    const isSvg = file.type === "image/svg+xml" || /\.svg$/i.test(file.name);
+    const scale = isSvg ? max / Math.max(w0, h0) : Math.min(1, max / Math.max(w0, h0));
+    const width = Math.max(1, Math.round(w0 * scale));
+    const height = Math.max(1, Math.round(h0 * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+    const dataUrl = canvas.toDataURL("image/png");
+    return { dataUrl, width, height, bytes: Math.round((dataUrl.length * 3) / 4) };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/**
+ * Drag-and-drop uploader. Files are sanitized and re-encoded by /api/uploads,
+ * or in the browser when `local` is set (public generator — no account, no upload).
+ */
 export function ImageUpload({
   kind,
   onUploaded,
   label,
   compact,
+  local,
 }: {
   kind: "logo" | "background";
   onUploaded: (image: UploadedImage) => void;
   label: string;
   compact?: boolean;
+  local?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -37,13 +75,17 @@ export function ImageUpload({
     }
     setBusy(true);
     try {
-      const body = new FormData();
-      body.set("file", file);
-      body.set("kind", kind);
-      const res = await fetch("/api/uploads", { method: "POST", body });
-      const json = (await res.json()) as UploadedImage & { error?: string };
-      if (!res.ok) throw new Error(json.error ?? "Upload failed");
-      onUploaded(json);
+      if (local) {
+        onUploaded(await processLocally(file, MAX_DIMENSION[kind]));
+      } else {
+        const body = new FormData();
+        body.set("file", file);
+        body.set("kind", kind);
+        const res = await fetch("/api/uploads", { method: "POST", body });
+        const json = (await res.json()) as UploadedImage & { error?: string };
+        if (!res.ok) throw new Error(json.error ?? "Upload failed");
+        onUploaded(json);
+      }
       toast.success(kind === "logo" ? "Logo added" : "Background image added");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Upload failed");

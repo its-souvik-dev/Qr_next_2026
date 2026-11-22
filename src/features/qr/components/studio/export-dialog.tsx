@@ -18,6 +18,7 @@ export function ExportDialog({
   config,
   settings,
   name,
+  local,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -25,6 +26,8 @@ export function ExportDialog({
   config: QRStyleConfig;
   settings: ExportSettings;
   name: string;
+  /** Render raster formats in the browser instead of on the server (public generator). */
+  local?: boolean;
 }) {
   const size = exportPixelSize(settings);
   const request = useMemo(
@@ -43,7 +46,7 @@ export function ExportDialog({
     if (!open) return;
     let cancelled = false;
     let url: string | undefined;
-    exportQr(request)
+    exportQr(request, { local })
       .then((blob) => {
         if (cancelled) return;
         url = URL.createObjectURL(blob);
@@ -54,7 +57,7 @@ export function ExportDialog({
       cancelled = true;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [open, request]);
+  }, [open, request, local]);
 
   const filename = `${slugifyFilename(name || "qr-code")}-${size}.${EXTENSION[settings.format]}`;
 

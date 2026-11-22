@@ -22,6 +22,7 @@ export const dashboardNav: NavItem[] = [
 ];
 
 export const marketingNav = [
+  { title: "Free generator", href: "/generate" },
   { title: "Features", href: "/#features" },
   { title: "Pricing", href: "/pricing" },
   { title: "About", href: "/about" },
